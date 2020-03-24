@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Migration namespace list
+namespaces=()
+
+for ns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}')
+do
+  namespaces+=(ns/$ns)
+done
+
+# Run the collection of resources using must-gather
+for ns in ${namespaces[@]}; do
+  /usr/bin/oc adm inspect --dest-dir must-gather --all-namespaces ${ns}
+done
+
+# Collect the migration and velero CRs
+/usr/bin/gather_crs
+
+exit 0
