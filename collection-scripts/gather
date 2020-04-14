@@ -16,4 +16,6 @@ done
 # Collect the migration and velero CRs
 /usr/bin/gather_crs
 
+# Collect the logs
+/usr/bin/gather_logs
 exit 0

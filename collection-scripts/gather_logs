@@ -1,0 +1,12 @@
+#!/bin/bash
+
+for ns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}')
+do
+  for pod in $(/usr/bin/oc get pods --no-headers --namespace $ns | awk '{print $1}')
+  do
+    object_collection_path="/must-gather/namespaces/${ns}/logs/${pod}"
+    mkdir -p ${object_collection_path}
+    /usr/bin/oc logs --all-containers --namespace ${ns} ${pod} > "${object_collection_path}/current.log"
+    /usr/bin/oc logs --previous --all-containers --namespace ${ns} ${pod} > "${object_collection_path}/previous.log"
+  done
+done
