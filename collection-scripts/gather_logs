@@ -9,4 +9,17 @@ do
     /usr/bin/oc logs --all-containers --namespace ${ns} ${pod} > "${object_collection_path}/current.log"
     /usr/bin/oc logs --previous --all-containers --namespace ${ns} ${pod} > "${object_collection_path}/previous.log"
   done
+
+  for kind in backup restore; do
+    object_collection_path="/must-gather/namespaces/${ns}/logs/velero-${kind}-logs"
+    mkdir -p ${object_collection_path}
+    export resources=()
+    for i in $(oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero get ${kind}s | grep -v NAME | awk '{ print \$1 }'" | tr -d '\r'); do
+      resources+=($i)
+    done
+    for resource in ${resources[@]}; do
+      oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero ${kind} logs $resource" > "${object_collection_path}/$resource-${kind}.log"
+      oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero ${kind} describe $resource --details" > "${object_collection_path}/$resource-${kind}-describe.log"
+    done
+  done
 done
