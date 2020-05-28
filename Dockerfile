@@ -1,8 +1,8 @@
-FROM quay.io/openshift/origin-must-gather:4.3.0 as builder
+FROM quay.io/openshift/origin-must-gather:4.4.0 as builder
 
-FROM centos:7
+FROM registry.access.redhat.com/ubi8-minimal:latest
 
-RUN yum install rsync -y
+RUN microdnf -y install rsync
 
 COPY --from=builder /usr/bin/oc /usr/bin/oc
 COPY collection-scripts/* /usr/bin/
