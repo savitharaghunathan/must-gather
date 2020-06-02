@@ -1,21 +1,48 @@
 #!/bin/bash
 
-# Migration namespace list
-namespaces=()
+unset KUBECONFIG
+for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}'); do
+  clusters=()
+  clusters+=(host)
+  for c in $(oc -n ${localns} get migclusters -o custom-columns=name:.metadata.name --no-headers); do
+    if [ $(oc -n ${localns} get migcluster ${c} -o go-template='{{ .spec.isHostCluster }}') == "false" ]; then
+      clusters+=(${c})
+    fi
+  done
 
-for ns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}')
-do
-  namespaces+=(ns/$ns)
+  for cluster in ${clusters[@]}; do
+    unset KUBECONFIG
+    if [ ${cluster} != "host" ]; then
+      token=$(oc get -n $(oc get -n ${localns} migcluster ${cluster} -o go-template='{{ .spec.serviceAccountSecretRef.namespace }}') secret $(oc get -n ${localns} migcluster ${cluster} -o go-template='{{ .spec.serviceAccountSecretRef.name }}') -o go-template='{{ .data.saToken }}' | base64 -d)
+      url=$(oc get -n ${localns} migcluster ${cluster} -o go-template='{{ .spec.url }}')
+      export KUBECONFIG=/tmp/kubeconfig
+      oc login --insecure-skip-tls-verify=true --token=${token} $url
+      if [ "$?" != "0" ]; then
+        object_collection_path="/must-gather/${cluster}/"
+        mkdir -p ${object_collection_path}
+        echo "login to cluster ${cluster} unsuccessful."  > "${object_collection_path}/login_error.txt"
+        continue
+      fi
+    fi
+
+    # Migration namespace list
+    namespaces=()
+
+    for ns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}')
+    do
+      namespaces+=(ns/$ns)
+    done
+
+    # Run the collection of resources using must-gather
+    for ns in ${namespaces[@]}; do
+      /usr/bin/oc adm inspect --dest-dir must-gather/${cluster} --all-namespaces ${ns}
+    done
+
+  done
+  # Collect the migration and velero CRs
+  /usr/bin/gather_crs
+
+  # Collect the logs
+  /usr/bin/gather_logs
 done
-
-# Run the collection of resources using must-gather
-for ns in ${namespaces[@]}; do
-  /usr/bin/oc adm inspect --dest-dir must-gather --all-namespaces ${ns}
-done
-
-# Collect the migration and velero CRs
-/usr/bin/gather_crs
-
-# Collect the logs
-/usr/bin/gather_logs
 exit 0
