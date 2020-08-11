@@ -44,5 +44,8 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
 
   # Collect the logs
   /usr/bin/gather_logs
+
+  # Collect metrics from Prometheus
+  /usr/bin/gather_metrics
 done
 exit 0
