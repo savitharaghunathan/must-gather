@@ -1,0 +1,69 @@
+
+<!doctype html>
+<html>
+<head>
+	<title>Prometheus Metrics Charts</title>
+	<!-- ChartJS library -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
+	<!-- Coloring plugin -->
+	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-colorschemes"></script>
+	<style>
+		body {
+			padding: 1ex 3em 1ex 3em;
+			text-align: center;
+			color: #555;
+		}
+		canvas {
+			margin-bottom: 10ex;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Prometheus Metrics Charts</h1>
+	<div id="charts">
+	</div>
+
+    <script>
+		window.charts = [];
+
+  		window.onload = function() {
+  			// Dynamically create charts for provided metrics
+  			for (var i = 0; i < window.dataset.length; i++) {
+
+  				// Prepare dataset and config
+  				var chartConfig = {
+		  			type: 'line',
+		  			data: {
+		  				datasets: [window.dataset[i]],
+		  			},
+		  			options: {
+		  				responsive: true,
+		  				scales: {
+		  					xAxes: [{
+		  						type: 'time',
+		  						display: true,
+		  					}],
+						  },
+						plugins: {
+            				colorschemes: {
+                				scheme: 'brewer.Paired12'
+							},
+        				}
+		  			}
+		  		};
+  
+  				// Prepare HTML context
+  				var chartContainer = document.createElement("div");
+  				var canvas = document.createElement("canvas");
+				chartContainer.appendChild(canvas);
+				document.querySelector("div#charts").appendChild(chartContainer);
+  				var ctx = canvas.getContext('2d');
+  
+  				// Draw the chart
+  				window.charts.push(new Chart(ctx, chartConfig));
+			}
+		};
+
+		// Browsers/CORS blocks loading local files, embeding all chart data directly into the HTML file
+		window.dataset = prepareDataset('
