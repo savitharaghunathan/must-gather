@@ -2,11 +2,14 @@
 <!doctype html>
 <html>
 <head>
-	<title>Prometheus Metrics Charts</title>
+	<title>Metrics Chart</title>
 	<!-- ChartJS library -->
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
 	<!-- Coloring plugin -->
 	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-colorschemes"></script>
+	<!-- Zooming plugin -->
+	<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@0.7.7"></script>
 	<style>
 		body {
 			padding: 1ex 3em 1ex 3em;
@@ -16,53 +19,66 @@
 		canvas {
 			margin-bottom: 10ex;
 		}
+		div#chart-controls > button {
+			display: none;
+		}
 	</style>
 </head>
 
 <body>
-	<h1>Prometheus Metrics Charts</h1>
-	<div id="charts">
+	<h1>Metrics Chart</h1>
+	<div id="chart">
+	</div>
+	<div id="chart-controls">
+		<button id="zoom-btn" onclick='window.chart.resetZoom(); document.querySelector("#zoom-btn").style.display = "none";'>Reset Zoom</button>
 	</div>
 
     <script>
-		window.charts = [];
+		window.chart = null;
+		window.onload = function() {
+			// Prepare dataset and config
+			var chartConfig = {
+				type: 'line',
+				data: {
+					datasets: window.dataset,
+				},
+				options: {
+					responsive: true,
+					scales: {
+						xAxes: [{
+							type: 'time',
+							display: true,
+						}],
+					},
+					hover: {
+						mode: "dataset"
+					},
+					plugins: {
+						colorschemes: {
+							scheme: 'tableau.Tableau10'
+						},
+						zoom: {
+							zoom: {
+								enabled: true,
+								drag: false,
+								mode: 'x',
+								speed: 0.2,
+								onZoomComplete: function({chart}) { document.querySelector("#zoom-btn").style.display = "block"; }
+							}
+						}
+					}
+				}
+			};
 
-  		window.onload = function() {
-  			// Dynamically create charts for provided metrics
-  			for (var i = 0; i < window.dataset.length; i++) {
+			// Prepare HTML context
+			var chartContainer = document.createElement("div");
+			var canvas = document.createElement("canvas");
+			chartContainer.appendChild(canvas);
+			document.querySelector("div#chart").appendChild(chartContainer);
+			var ctx = canvas.getContext('2d');
 
-  				// Prepare dataset and config
-  				var chartConfig = {
-		  			type: 'line',
-		  			data: {
-		  				datasets: [window.dataset[i]],
-		  			},
-		  			options: {
-		  				responsive: true,
-		  				scales: {
-		  					xAxes: [{
-		  						type: 'time',
-		  						display: true,
-		  					}],
-						  },
-						plugins: {
-            				colorschemes: {
-                				scheme: 'brewer.Paired12'
-							},
-        				}
-		  			}
-		  		};
-  
-  				// Prepare HTML context
-  				var chartContainer = document.createElement("div");
-  				var canvas = document.createElement("canvas");
-				chartContainer.appendChild(canvas);
-				document.querySelector("div#charts").appendChild(chartContainer);
-  				var ctx = canvas.getContext('2d');
-  
-  				// Draw the chart
-  				window.charts.push(new Chart(ctx, chartConfig));
-			}
+			// Draw the chart
+			window.chart = new Chart(ctx, chartConfig);
 		};
 
 		// Browsers/CORS blocks loading local files, embeding all chart data directly into the HTML file

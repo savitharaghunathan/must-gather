@@ -13,12 +13,14 @@
 				var dataline = {
 					pointRadius: 0,
 					fill: false,
-					lineTension: 0,
+					borderWidth: 2,
 				};
 				var metric = data[i].metric;
 				dataline.label = metric.instance + " " + metric.__name__
 				if (metric.type) dataline.label += " " + metric.type
 				if (metric.status) dataline.label += " " + metric.status
+				// Append additional metric identifiers similar to ^
+
 				dataline.data = data[i].values.map(parseSample);
 				dataset.push(dataline);
 			}
