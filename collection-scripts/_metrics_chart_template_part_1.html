@@ -12,7 +12,7 @@
 	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@0.7.7"></script>
 	<style>
 		body {
-			padding: 1ex 3em 1ex 3em;
+			padding: 1ex 5em 1ex 5em;
 			text-align: center;
 			color: #555;
 		}
@@ -43,7 +43,11 @@
 					datasets: window.dataset,
 				},
 				options: {
+					animation: {
+						duration: 0
+					},
 					responsive: true,
+					responsiveAnimationDuration: 0,
 					scales: {
 						xAxes: [{
 							type: 'time',
@@ -51,7 +55,16 @@
 						}],
 					},
 					hover: {
+						animationDuration: 0,
 						mode: "dataset"
+					},
+					tooltips: {
+						callbacks: {
+							label: (tooltipItem, data) => {
+								var label = data.datasets[tooltipItem.datasetIndex].label;
+								return label.split("\n");
+							}
+						}
 					},
 					plugins: {
 						colorschemes: {
