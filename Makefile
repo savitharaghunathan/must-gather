@@ -24,7 +24,7 @@ prometheus-run: prometheus-cleanup-container prometheus-load-dump
 	  prom/prometheus:v2.6.0 \
 	&& echo "Started Prometheus on http://localhost:9090"
 
-prometheus-load-dump: prometheus-cleanup-data
+prometheus-load-dump: prometheus-check-archive-file prometheus-cleanup-data
 	mkdir -p ${PROMETHEUS_LOCAL_DATA_DIR}
 	tar xvf ${PROMETHEUS_DUMP_PATH} -C ${PROMETHEUS_LOCAL_DATA_DIR} --strip-components=1 --no-same-owner
 	chmod 777 -R ${PROMETHEUS_LOCAL_DATA_DIR}
@@ -38,3 +38,6 @@ prometheus-cleanup-data:
 	rm -rf ${PROMETHEUS_LOCAL_DATA_DIR}
 
 prometheus-cleanup: prometheus-cleanup-container prometheus-cleanup-data
+
+prometheus-check-archive-file:
+	test -f "${PROMETHEUS_DUMP_PATH}" || (echo "Error: Prometheus archive file does not exist. Specify valid file in PROMETHEUS_DUMP_PATH environment variable."; exit 1)
