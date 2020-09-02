@@ -13,7 +13,20 @@ The command above will create a local directory with a dump of the CAM state.
 You will get a dump of:
 - All namespaces where a CAM toolset is installed, including pod logs
 - All velero.io and migration.openshift.io resources located in those namespaces
+- Prometheus metrics
 
+#### Preview metrics on local Prometheus server
+
+Get Prometheus metrics data directory dump (last day, might take a while):
+```sh
+oc adm must-gather --image quay.io/konveyor/must-gather:latest -- /usr/bin/gather_metrics_dump
+```
+
+Run local Prometheus instance with dumped data:
+```sh
+make prometheus-run # and prometheus-cleanup when you're done
+```
+The latest Prometheus data file (prom_data.tar.gz) in current directory/subdirectories is searched by default. Could be specified in ```PROMETHEUS_DUMP_PATH``` environment variable.
 
 ### Development
 You can build the image locally using the Dockerfile included.
