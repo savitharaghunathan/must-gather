@@ -53,13 +53,13 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
     /usr/bin/gather_logs ${cluster} ${namespaces} &
   done
 
-  # Waits for gather_crs and gather_logs running in background
-  echo "Waiting for background gather tasks to finish"
-  wait
-
   # Collect metrics from Prometheus
   echo "[cluster=host] Gathering prometheus metrics"
   /usr/bin/gather_metrics &
+
+  # Waits for gather_crs, gather_logs, gather_metrics running in background
+  echo "Waiting for background gather tasks to finish"
+  wait
 done
 
 # Tar all must-gather artifacts for faster transmission 
