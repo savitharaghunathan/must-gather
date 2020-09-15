@@ -2,15 +2,18 @@
 
 
 # Cluster passed in from main gather
-cluster = $1
+cluster=$1
+namespaces=$2
 
-# Collect all Pod logs from last week (168 hours) from namespaces where MTC is installed
-for ns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}'); do
+# Collect all Pod logs from last 3 days (72 hours) from namespaces where MTC is installed
+for ns in ${namespaces[@]}; do
   for pod in $(/usr/bin/oc get pods --no-headers --namespace $ns | awk '{print $1}'); do
     object_collection_path="/must-gather/${cluster}/namespaces/${ns}/logs/${pod}"
     mkdir -p ${object_collection_path}
-    /usr/bin/oc logs --all-containers --since=168h --namespace ${ns} ${pod} > "${object_collection_path}/current.log"
-    /usr/bin/oc logs --previous --since=168h --all-containers --namespace ${ns} ${pod} > "${object_collection_path}/previous.log"
+    echo "[cluster=${cluster}][ns=${ns}][pod=${pod}] Collecting Pod logs..."
+    /usr/bin/oc logs --all-containers --since=72h --namespace ${ns} ${pod} > "${object_collection_path}/current.log" &
+    echo "[cluster=${cluster}][ns=${ns}][pod=${pod}] Collecting previous Pod logs..."
+    /usr/bin/oc logs --previous --since=72h --all-containers --namespace ${ns} ${pod} > "${object_collection_path}/previous.log" & 
   done
 
   for kind in backup restore; do
@@ -21,8 +24,12 @@ for ns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-na
       resources+=($i)
     done
     for resource in ${resources[@]}; do
-      oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero ${kind} logs $resource" > "${object_collection_path}/$resource-${kind}.log"
-      oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero ${kind} describe $resource --details" > "${object_collection_path}/$resource-${kind}-describe.log"
+      echo "[cluster=${cluster}][ns=${ns}] Gathering 'velero ${kind} logs ${resource}'"
+      oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero ${kind} logs $resource --timeout=10s" > "${object_collection_path}/$resource-${kind}.log" &
+      echo "[cluster=${cluster}][ns=${ns}] Gathering 'velero ${kind} describe ${resource}'"
+      oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero ${kind} describe $resource --details" > "${object_collection_path}/$resource-${kind}-describe.log" &
     done
   done
 done
+
+wait

@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Cluster passed in from main gather
-cluster = $1
+cluster=$1
+namespaces=$2
 
 # Resource list
 resources=()
@@ -16,8 +17,11 @@ for i in $(/usr/bin/oc get crd | grep velero.io | awk '{print $1}'); do
   resources+=($i)
 done
 
+echo "[cluster=${cluster}] Starting collection of: [${resources[@]}]"
+
 # we use nested loops to nicely output objects partitioned per namespace, kind
 for resource in ${resources[@]}; do
+  echo "[cluster=${cluster}] Collecting ${resource}"
   /usr/bin/oc get ${resource} --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace --no-headers 2> /dev/null | \
   while read ocresource; do
     ocobject=$(echo $ocresource | awk '{print $1}')
@@ -25,11 +29,13 @@ for resource in ${resources[@]}; do
     if [ -z "${ocproject}" ]|[ "${ocproject}" == "<none>" ]; then
       object_collection_path=must-gather/${cluster}/cluster-scoped-resources/${resource}
       mkdir -p ${object_collection_path}
-      /usr/bin/oc get ${resource} -o yaml ${ocobject} > ${object_collection_path}/${ocobject}.yaml
+      /usr/bin/oc get ${resource} -o yaml ${ocobject} > ${object_collection_path}/${ocobject}.yaml &
     else
       object_collection_path=must-gather/${cluster}/namespaces/${ocproject}/crs/${resource}
       mkdir -p ${object_collection_path}
-      /usr/bin/oc get ${resource} -n ${ocproject} -o yaml ${ocobject} > ${object_collection_path}/${ocobject}.yaml
+      /usr/bin/oc get ${resource} -n ${ocproject} -o yaml ${ocobject} > ${object_collection_path}/${ocobject}.yaml & 
     fi
   done
 done
+
+wait
