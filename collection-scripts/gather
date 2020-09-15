@@ -73,5 +73,5 @@ rmdir ${archive_path}
 echo "Created /must-gather/must-gather.tar.gz"
 
 
-echo "Completed gather!"
+echo "Waiting for copy phase..."
 exit 0
