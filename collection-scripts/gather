@@ -4,12 +4,15 @@ unset KUBECONFIG
 for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}'); do
   clusters=()
   clusters+=(host)
+  # get all migclusters
   for c in $(oc -n ${localns} get migclusters -o custom-columns=name:.metadata.name --no-headers); do
+    # only take non-host cluster
     if [ $(oc -n ${localns} get migcluster ${c} -o go-template='{{ .spec.isHostCluster }}') == "false" ]; then
       clusters+=(${c})
     fi
   done
 
+  # Iterate over all connected non-host OpenShift clusters
   for cluster in ${clusters[@]}; do
     unset KUBECONFIG
     if [ ${cluster} != "host" ]; then
@@ -25,27 +28,27 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
       fi
     fi
 
-    # Migration namespace list
+    # Build list of namespaces where MTC is installed
     namespaces=()
-
     for ns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}')
     do
       namespaces+=(ns/$ns)
     done
 
-    # Run the collection of resources using must-gather
+    # Collect resources in MTC namespaces with must-gather
     for ns in ${namespaces[@]}; do
       /usr/bin/oc adm inspect --dest-dir must-gather/${cluster} --all-namespaces ${ns}
     done
 
+    # Collect the migration and velero CRs
+    /usr/bin/gather_crs ${cluster}
+
+    # Collect the logs
+    /usr/bin/gather_logs ${cluster}
+
+    # Collect metrics from Prometheus
+    /usr/bin/gather_metrics ${cluster}
   done
-  # Collect the migration and velero CRs
-  /usr/bin/gather_crs
-
-  # Collect the logs
-  /usr/bin/gather_logs
-
-  # Collect metrics from Prometheus
-  /usr/bin/gather_metrics
+  
 done
 exit 0
