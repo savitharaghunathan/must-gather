@@ -27,7 +27,7 @@ prometheus-run: prometheus-cleanup-container prometheus-load-dump
 prometheus-load-dump: prometheus-check-archive-file prometheus-cleanup-data
 	mkdir -p ${PROMETHEUS_LOCAL_DATA_DIR}
 	tar xvf ${PROMETHEUS_DUMP_PATH} -C ${PROMETHEUS_LOCAL_DATA_DIR} --strip-components=1 --no-same-owner
-	chmod 777 -R ${PROMETHEUS_LOCAL_DATA_DIR}
+	chmod -R 777 ${PROMETHEUS_LOCAL_DATA_DIR}
 
 prometheus-cleanup-container:
 	# delete data files directly from the container to allow delete data directory from outside of the container
