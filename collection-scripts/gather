@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Default to gathering 72h of logs unless specified as var
+logs_since="${logs_since:-72h}"
+
 unset KUBECONFIG
 for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}'); do
   clusters=()
@@ -50,7 +53,7 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
 
     # Collect the logs"
     echo "[cluster=${cluster}] Gathering logs for namespaces [${namespaces[@]}]"
-    /usr/bin/gather_logs ${cluster} ${namespaces} &
+    /usr/bin/gather_logs ${cluster} ${namespaces} ${logs_since} &
   done
 
   # Collect metrics from Prometheus

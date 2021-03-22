@@ -1,0 +1,21 @@
+#!/bin/bash
+source pwait
+
+# Cluster passed in from main gather
+cluster=$1
+ns=$2
+logs_since=$3
+max_parallelism=$4
+
+for backup in $(oc get backup --namespace ${ns} --no-headers | awk '{print $1}'); do
+    migplan=$(oc get backup $backup -o jsonpath='{.metadata.labels.migration\.openshift\.io/migplan-name}' --namespace $ns)
+    migmigration=$(oc get backup $backup -o jsonpath='{.metadata.labels.migration\.openshift\.io/migmigration-name}' --namespace $ns)
+    mkdir -p "/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/backup-${backup}"
+    echo "[cluster=${cluster}][ns=${ns}] Gathering 'velero backup describe ${backup}'"
+    oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero describe backup ${backup} --details" &> "/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/backup-${backup}/backup-describe-${backup}.txt" &
+    echo "[cluster=${cluster}][ns=${ns}] Gathering 'velero backup logs ${backup}'"
+    oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero backup logs ${backup} --timeout=30s" &> "/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/backup-${backup}/backup-${backup}.log" &
+    pwait $max_parallelism
+done
+
+wait
