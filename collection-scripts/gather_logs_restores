@@ -6,16 +6,13 @@ cluster=$1
 ns=$2
 logs_since=$3
 max_parallelism=$4
+restore=$5
+object_collection_path=$6
 
-for restore in $(oc get restore --namespace ${ns} --no-headers | awk '{print $1}'); do
-    migplan=$(oc get restore $restore -o jsonpath='{.metadata.labels.migration\.openshift\.io/migplan-name}' --namespace $ns)
-    migmigration=$(oc get restore $restore -o jsonpath='{.metadata.labels.migration\.openshift\.io/migmigration-name}' --namespace $ns)
-    mkdir -p "/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/restore-${restore}"
-    echo "[cluster=${cluster}][ns=${ns}] Gathering 'velero restore describe ${restore}'"
-    oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero describe restore ${restore} --details" &> "/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/restore-${restore}/restore-describe-${restore}.txt" &
-    echo "[cluster=${cluster}][ns=${ns}] Gathering 'velero restore logs ${restore}'"
-    oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero restore logs ${restore} --timeout=30s" &> "/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/restore-${restore}/restore-${restore}.log" &
-    pwait $max_parallelism
-done
+mkdir -p "{object_collection_path}"
+echo "[cluster=${cluster}][ns=${ns}] Gathering 'velero restore describe ${restore}'"
+oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero describe restore ${restore} --details" &> "${object_collection_path}/restore-describe-${restore}.txt" &
+echo "[cluster=${cluster}][ns=${ns}] Gathering 'velero restore logs ${restore}'"
+oc -n ${ns} exec $(oc -n ${ns} get po -l component=velero -o custom-columns=name:.metadata.name --no-headers) -- /bin/bash -c "/velero restore logs ${restore} --timeout=30s" &> "${object_collection_path}/restore-${restore}.log" &
 
 wait

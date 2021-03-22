@@ -10,20 +10,49 @@ logs_since=$3
 
 # Collect all Pod logs from namespaces where MTC is installed
 for ns in ${namespaces[@]}; do
-  # Gather Pod associated logs
-  /usr/bin/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+  for migplan in $(oc get migplan --namespace ${ns} --no-headers | awk '{print $1}'); do
+    plan_path="/must-gather/migplans/migplan-${migplan}"
+    for migmigration in $(oc get migmigration --namespace ${ns} -l "migration.openshift.io/migplan-name"="${migplan}" --no-headers | awk '{print $1}'); do
+      # Gather migmigration
+      migration_path="${plan_path}/migmigration-${migmigration}"
+      for backup in $(oc get backup --namespace ${ns} -l "migration.openshift.io/migmigration-name"="${migmigration}" --no-headers | awk '{print $1}'); do
+        # Gather backup
+        backup_path="${migration_path}/backup-${backup}"
+        for pvb in $(oc get podvolumebackup --namespace ${ns} -l "velero.io/backup-name"="${backup}" --no-headers | awk '{print $1}'); do
+          # Gather PVB
+          pvb_path="${backup_path}/podvolumebackup-${pvb}"
+          /usr/bin/gather_logs_pvbs ${cluster} ${ns} ${logs_since} ${max_parallelism} ${pvb} ${pvb_path} &
+        done
+      done
+      
+      for restore in $(oc get restore --namespace ${ns} -l "migration.openshift.io/migmigration-name"="${migmigration}" --no-headers | awk '{print $1}'); do
+        # Gather restore
+        restore_path="${migration_path}/restore-${restore}"
+        /usr/bin/gather_logs_restores ${cluster} ${ns} ${logs_since} ${max_parallelism} ${restore} ${restore_path} &
+        for pvr in $(oc get podvolumerestore --namespace ${ns} -l "velero.io/restore-name"="${restore}" --no-headers | awk '{print $1}'); do
+          # Gather PVR
+          pvr_path="${restore_path}/podvolumerestore-${pvr}"
+        done
+      done
+    done
+  done
 
-  # Gather Backup associated logs
-  /usr/bin/gather_logs_backups ${cluster} ${ns} ${logs_since} ${max_parallelism} &
 
-  # Gather Restore associated logs
-  /usr/bin/gather_logs_restores ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+
+  # # Gather Pod associated logs
+  # /usr/bin/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+
+  # # Gather Backup associated logs
+  # /usr/bin/gather_logs_backups ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+
+  # # Gather Restore associated logs
+  # /usr/bin/gather_logs_restores ${cluster} ${ns} ${logs_since} ${max_parallelism} &
   
-  # Gather PodVolumeRestore associated logs
-  /usr/bin/gather_logs_pvrs ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+  # # Gather PodVolumeRestore associated logs
+  # /usr/bin/gather_logs_pvrs ${cluster} ${ns} ${logs_since} ${max_parallelism} &
 
-  # Gather PodVolumeBackup associated logs
-  /usr/bin/gather_logs_pvbs ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+  # # Gather PodVolumeBackup associated logs
+  # /usr/bin/gather_logs_pvbs ${cluster} ${ns} ${logs_since} ${max_parallelism} &
 done
 
 # Wait for all background jobs to complete
