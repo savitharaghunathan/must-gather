@@ -47,9 +47,9 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
     #   /usr/bin/oc adm inspect --dest-dir must-gather/${cluster} --all-namespaces ns/${ns} &
     # done
 
-    # # Collect the migration and velero CRs
-    # echo "[cluster=${cluster}] Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
-    # /usr/bin/gather_crs ${cluster} ${namespaces} &
+    # Collect the migration and velero CRs
+    echo "[cluster=${cluster}] Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
+    /usr/bin/gather_crs ${cluster} ${namespaces} &
 
     # Collect the logs"
     echo "[cluster=${cluster}] Gathering logs for namespaces [${namespaces[@]}]"

@@ -7,9 +7,6 @@ cluster=$1
 namespaces=$2
 logs_since=$3
 
-# Debug
-set -x
-
 base_path="/must-gather/migplans"
 mkdir -p ${base_path}
 
@@ -17,7 +14,7 @@ mkdir -p ${base_path}
 for ns in ${namespaces[@]}; do
 
   # Gather Pod associated logs
-  /usr/bin/logs/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+  /usr/bin/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
 
   for migplan in $(oc get migplan --namespace ${ns} --no-headers | awk '{print $1}'); do
     plan_path="${base_path}/migplan-${migplan}"
@@ -30,7 +27,7 @@ for ns in ${namespaces[@]}; do
         # Gather backup
         backup_path="${migration_path}/backup-${backup}"
         mkdir -p ${backup_path}
-        /usr/bin/logs/gather_logs_backup ${cluster} ${ns} ${logs_since} ${max_parallelism} ${backup} ${backup_path} &
+        /usr/bin/gather_logs_backup ${cluster} ${ns} ${logs_since} ${max_parallelism} ${backup} ${backup_path} &
         pwait $max_parallelism
         for pvb in $(oc get podvolumebackup --namespace ${ns} -l "velero.io/backup-name"="${backup}" --no-headers | awk '{print $1}'); do
           # Gather PVB
@@ -45,35 +42,18 @@ for ns in ${namespaces[@]}; do
         # Gather restore
         restore_path="${migration_path}/restore-${restore}"
         mkdir -p ${restore_path}
-        /usr/bin/logs/gather_logs_restore ${cluster} ${ns} ${logs_since} ${max_parallelism} ${restore} ${restore_path} &
+        /usr/bin/gather_logs_restore ${cluster} ${ns} ${logs_since} ${max_parallelism} ${restore} ${restore_path} &
         pwait $max_parallelism
         for pvr in $(oc get podvolumerestore --namespace ${ns} -l "velero.io/restore-name"="${restore}" --no-headers | awk '{print $1}'); do
           # Gather PVR
           pvr_path="${restore_path}/podvolumerestore-${pvr}"
           mkdir -p ${pvr_path}
-          /usr/bin/logs/gather_logs_pvr ${cluster} ${ns} ${logs_since} ${max_parallelism} ${pvr} ${pvr_path} &
+          /usr/bin/gather_logs_pvr ${cluster} ${ns} ${logs_since} ${max_parallelism} ${pvr} ${pvr_path} &
           pwait $max_parallelism
         done
       done
     done
   done
-
-
-
-  # Gather Pod associated logs
-  # /usr/bin/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
-
-  # # Gather Backup associated logs
-  # /usr/bin/gather_logs_backups ${cluster} ${ns} ${logs_since} ${max_parallelism} &
-
-  # # Gather Restore associated logs
-  # /usr/bin/gather_logs_restores ${cluster} ${ns} ${logs_since} ${max_parallelism} &
-  
-  # # Gather PodVolumeRestore associated logs
-  # /usr/bin/gather_logs_pvrs ${cluster} ${ns} ${logs_since} ${max_parallelism} &
-
-  # # Gather PodVolumeBackup associated logs
-  # /usr/bin/gather_logs_pvbs ${cluster} ${ns} ${logs_since} ${max_parallelism} &
 done
 
 # Wait for all background jobs to complete
