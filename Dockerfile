@@ -13,7 +13,7 @@ COPY --from=gobuilder /opt/app-root/src/go/bin/pprof /usr/bin/pprof
 COPY --from=builder /usr/bin/oc /usr/bin/oc
 
 COPY collection-scripts/* /usr/bin/
-COPY collection-scripts/logs/* /usr/bin
-COPY collection-scripts/time_window_gather /usr/bin
+COPY collection-scripts/logs/* /usr/bin/
+COPY collection-scripts/time_window_gather /usr/bin/
 
 ENTRYPOINT /usr/bin/gather
