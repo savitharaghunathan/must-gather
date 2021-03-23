@@ -1,19 +1,31 @@
-# CAM must-gather
+# MTC must-gather
 
 `must-gather` is a tool built on top of [OpenShift must-gather](https://github.com/openshift/must-gather)
-that expands its capabilities to gather CAM specific resources
+that expands its capabilities to gather MTC specific resources
 
 ### Usage
+
+**Full gather**
 ```sh
 oc adm must-gather --image=quay.io/konveyor/must-gather:latest
 ```
 
-The command above will create a local directory with a dump of the CAM state.
+The command above will create a local directory with a dump of the MTC state.
 
 You will get a dump of:
-- All namespaces where a CAM toolset is installed, including pod logs
+- All namespaces where a MTC toolset is installed, including pod logs
 - All velero.io and migration.openshift.io resources located in those namespaces
 - Prometheus metrics
+
+**Essential-only gather**
+
+Differences from full gather:
+ - Logs are only gathered from specified time window
+ - Skips collection of prometheus metrics, pprof. Removes duplicate logs from payload.
+```
+# Essential gather (available time windows: [1h, 6h, 24h, 72h, all])
+oc adm must-gather --image=quay.io/konveyor/must-gather:latest -- /usr/bin/gather_24h_essential
+```
 
 #### Preview metrics on local Prometheus server
 
