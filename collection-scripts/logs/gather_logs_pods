@@ -8,7 +8,7 @@ logs_since=$3
 max_parallelism=$4
 
 for pod in $(/usr/bin/oc get pods --no-headers --namespace $ns | awk '{print $1}'); do
-    object_collection_path="/must-gather/${cluster}/namespaces/${ns}/logs/${pod}"
+    object_collection_path="/must-gather/clusters/${cluster}/namespaces/${ns}/logs/${pod}"
     mkdir -p ${object_collection_path}
 
     containers="--all-containers"

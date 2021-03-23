@@ -29,7 +29,7 @@ for resource in ${resources[@]}; do
     ocobject=$(echo $ocresource | awk '{print $1}')
     ocproject=$(echo $ocresource | awk '{print $2}')
     if [ -z "${ocproject}" ]|[ "${ocproject}" == "<none>" ]; then
-      object_collection_path=must-gather/${cluster}/cluster-scoped-resources/${resource}
+      object_collection_path=must-gather/clusters/${cluster}/cluster-scoped-resources/${resource}
       mkdir -p ${object_collection_path}
       /usr/bin/oc get ${resource} -o yaml ${ocobject} &> ${object_collection_path}/${ocobject}.yaml &
     else
@@ -37,7 +37,7 @@ for resource in ${resources[@]}; do
       if [[ ${skip[*]} =~ "${resource}" ]]; then
         continue
       fi
-      object_collection_path=must-gather/${cluster}/namespaces/${ocproject}/crs/${resource}
+      object_collection_path=must-gather/clusters/${cluster}/namespaces/${ocproject}/crs/${resource}
       mkdir -p ${object_collection_path}
       /usr/bin/oc get ${resource} -n ${ocproject} -o yaml ${ocobject} &> ${object_collection_path}/${ocobject}.yaml & 
     fi

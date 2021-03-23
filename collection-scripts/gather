@@ -26,7 +26,7 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
       export KUBECONFIG=/tmp/kubeconfig
       oc login --insecure-skip-tls-verify=true --token=${token} $url
       if [ "$?" != "0" ]; then
-        object_collection_path="/must-gather/${cluster}/"
+        object_collection_path="/must-gather/clusters/${cluster}/"
         mkdir -p ${object_collection_path}
         echo "Login to migcluster ${cluster} unsuccessful."  > "${object_collection_path}/login_error.txt"
         continue
@@ -41,11 +41,11 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
       namespaces+=(${ns})
     done
 
-    # # Collect resources in MTC namespaces with must-gather
-    # for ns in ${namespaces[@]}; do
-    #   echo "[cluster=${cluster}][namespace=${ns}] Running oc adm inspect"
-    #   /usr/bin/oc adm inspect --dest-dir must-gather/${cluster} --all-namespaces ns/${ns} &
-    # done
+    # Collect all resources in MTC namespaces with must-gather
+    for ns in ${namespaces[@]}; do
+      echo "[cluster=${cluster}][namespace=${ns}] Running oc adm inspect"
+      /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${cluster} --all-namespaces ns/${ns} &
+    done
 
     # Collect the migration and velero CRs
     echo "[cluster=${cluster}] Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
@@ -57,16 +57,32 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
   done
 
   # Collect metrics from Prometheus
-  echo "[cluster=host] Gathering prometheus metrics"
-  /usr/bin/gather_metrics &
+  if [ -z "$essential_only" ]; then
+    echo "[cluster=host] Gathering prometheus metrics"
+    /usr/bin/gather_metrics &
+  else
+    echo "Essential-only must-gather was requested. Skipping prometheus metrics collection"
+  fi
 
   # Collect memory profile data
-  /usr/bin/gather_pprof ${localns} &
+  if [ -z "$essential_only" ]; then
+    /usr/bin/gather_pprof ${localns} &
+  else
+    echo "Essential-only must-gather was requested. Skipping pprof memory profile gather"
+  fi
 
   # Waits for gather_crs, gather_logs, gather_metrics running in background
   echo "Waiting for background gather tasks to finish"
   wait
 done
+
+# If running essential-only must-gather, delete duplicated logs collected by oc adm inspect
+if [ -z "$essential_only" ]; then
+  echo "Full must-gather was requested. Keeping full log payload from oc adm inspect"
+else
+  echo "Essential-only must-gather was requested. Removing duplicate pod logs from oc adm inspect to reduce must-gather size"
+  find /must-gather/clusters/*/namespaces/*/pods/ -name '*.log' -delete
+fi
 
 # Tar all must-gather artifacts for faster transmission 
 echo "Tarring must-gather artifacts..."

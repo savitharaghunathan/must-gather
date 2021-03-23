@@ -16,11 +16,14 @@ for ns in ${namespaces[@]}; do
   # Gather Pod associated logs
   /usr/bin/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
 
+  # Gather logs for each migplan
   for migplan in $(oc get migplan --namespace ${ns} --no-headers | awk '{print $1}'); do
+    # TODO: gather filtered logs from mig-controller with this plan name
     plan_path="${base_path}/migplan-${migplan}"
     mkdir -p ${plan_path}
     for migmigration in $(oc get migmigration --namespace ${ns} -l "migration.openshift.io/migplan-name"="${migplan}" --no-headers | awk '{print $1}'); do
       # Gather migmigration
+      # TODO: filter for logs from mig-controller with this migration name
       migration_path="${plan_path}/migmigration-${migmigration}"
       mkdir -p ${migration_path}
       for backup in $(oc get backup --namespace ${ns} -l "migration.openshift.io/migmigration-name"="${migmigration}" --no-headers | awk '{print $1}'); do
