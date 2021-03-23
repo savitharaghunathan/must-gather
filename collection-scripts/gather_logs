@@ -1,37 +1,58 @@
 #!/bin/bash
 source pwait
 max_parallelism=10
-logs_since="72h"
 
 # Cluster passed in from main gather
 cluster=$1
 namespaces=$2
 logs_since=$3
 
+# Debug
+set -x
+
+base_path="/must-gather/migplans"
+mkdir -p ${base_path}
+
 # Collect all Pod logs from namespaces where MTC is installed
 for ns in ${namespaces[@]}; do
+
+  # Gather Pod associated logs
+  /usr/bin/logs/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+
   for migplan in $(oc get migplan --namespace ${ns} --no-headers | awk '{print $1}'); do
-    plan_path="/must-gather/migplans/migplan-${migplan}"
+    plan_path="${base_path}/migplan-${migplan}"
+    mkdir -p ${plan_path}
     for migmigration in $(oc get migmigration --namespace ${ns} -l "migration.openshift.io/migplan-name"="${migplan}" --no-headers | awk '{print $1}'); do
       # Gather migmigration
       migration_path="${plan_path}/migmigration-${migmigration}"
+      mkdir -p ${migration_path}
       for backup in $(oc get backup --namespace ${ns} -l "migration.openshift.io/migmigration-name"="${migmigration}" --no-headers | awk '{print $1}'); do
         # Gather backup
         backup_path="${migration_path}/backup-${backup}"
+        mkdir -p ${backup_path}
+        /usr/bin/logs/gather_logs_backup ${cluster} ${ns} ${logs_since} ${max_parallelism} ${backup} ${backup_path} &
+        pwait $max_parallelism
         for pvb in $(oc get podvolumebackup --namespace ${ns} -l "velero.io/backup-name"="${backup}" --no-headers | awk '{print $1}'); do
           # Gather PVB
           pvb_path="${backup_path}/podvolumebackup-${pvb}"
-          /usr/bin/gather_logs_pvbs ${cluster} ${ns} ${logs_since} ${max_parallelism} ${pvb} ${pvb_path} &
+          mkdir -p ${pvb_path}
+          /usr/bin/logs/gather_logs_pvb ${cluster} ${ns} ${logs_since} ${max_parallelism} ${pvb} ${pvb_path} &
+          pwait $max_parallelism
         done
       done
       
       for restore in $(oc get restore --namespace ${ns} -l "migration.openshift.io/migmigration-name"="${migmigration}" --no-headers | awk '{print $1}'); do
         # Gather restore
         restore_path="${migration_path}/restore-${restore}"
-        /usr/bin/gather_logs_restores ${cluster} ${ns} ${logs_since} ${max_parallelism} ${restore} ${restore_path} &
+        mkdir -p ${restore_path}
+        /usr/bin/logs/gather_logs_restore ${cluster} ${ns} ${logs_since} ${max_parallelism} ${restore} ${restore_path} &
+        pwait $max_parallelism
         for pvr in $(oc get podvolumerestore --namespace ${ns} -l "velero.io/restore-name"="${restore}" --no-headers | awk '{print $1}'); do
           # Gather PVR
           pvr_path="${restore_path}/podvolumerestore-${pvr}"
+          mkdir -p ${pvr_path}
+          /usr/bin/logs/gather_logs_pvr ${cluster} ${ns} ${logs_since} ${max_parallelism} ${pvr} ${pvr_path} &
+          pwait $max_parallelism
         done
       done
     done
@@ -39,7 +60,7 @@ for ns in ${namespaces[@]}; do
 
 
 
-  # # Gather Pod associated logs
+  # Gather Pod associated logs
   # /usr/bin/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
 
   # # Gather Backup associated logs
