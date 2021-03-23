@@ -47,6 +47,16 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
       /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${cluster} --all-namespaces ns/${ns} &
     done
 
+    # Collect PV and StorageClass info for cluster
+    echo "[cluster=${cluster}] Running oc adm inspect storageclasses,persistentvolumes"
+    usr/bin/oc adm inspect --dest-dir must-gather/clusters/${cluster} storageclasses,persistentvolumes &
+
+    # Collect Route and Service info needed to troubleshoot direct image migration connection
+    for ns in default openshift-image-registry; do
+      echo "[cluster=${cluster}][namespace=${ns}] Running oc adm inspect route,service"
+      /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${cluster} -n ${ns} route,service &
+    done
+
     # Collect the migration and velero CRs
     echo "[cluster=${cluster}] Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
     /usr/bin/gather_crs ${cluster} ${namespaces} &
