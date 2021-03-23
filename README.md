@@ -35,7 +35,7 @@ Troubleshooting a migration often requires looking at resource YAML in migrated 
 You can easily gather the content of the namespaces from the most recent migration attempt with this command.
 ```sh
 # Gathers content of namespaces migrated during latest MigMigration
-oc adm must-gather --image=quay.io/djwhatle/must-gather:latest -- /usr/bin/gather_migrated_namespaces
+oc adm must-gather --image=quay.io/konveyor/must-gather:latest -- /usr/bin/gather_migrated_namespaces
 ```
 
 #### Preview metrics on local Prometheus server
