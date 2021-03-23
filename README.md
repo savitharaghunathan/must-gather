@@ -19,7 +19,9 @@ You will get a dump of:
 
 **Essential-only gather**
 
-Gather logs from specified time window. Skips collection of prometheus metrics, pprof. Removes duplicate logs from payload.
+Differences from full gather:
+ - Logs are only gathered from specified time window
+ - Skips collection of prometheus metrics, pprof. Removes duplicate logs from payload.
 ```
 # Essential gather (available time windows: [1h, 6h, 24h, 72h, all])
 oc adm must-gather --image=quay.io/konveyor/must-gather:latest -- /usr/bin/gather_24h_essential
