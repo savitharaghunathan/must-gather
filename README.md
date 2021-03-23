@@ -14,7 +14,9 @@ The command above will create a local directory with a dump of the MTC state.
 
 You will get a dump of:
 - All namespaces where a MTC toolset is installed, including pod logs
-- All velero.io and migration.openshift.io resources located in those namespaces
+- All velero.io and migration.openshift.io resources located in MTC namespaces
+- StorageClasses and PersistentVolume YAML
+- Routes and Service YAML from the `default` and `openshift-image-registry` namespaces
 - Prometheus metrics
 
 **Essential-only gather**
@@ -25,6 +27,15 @@ Differences from full gather:
 ```
 # Essential gather (available time windows: [1h, 6h, 24h, 72h, all])
 oc adm must-gather --image=quay.io/konveyor/must-gather:latest -- /usr/bin/gather_24h_essential
+```
+
+**Migrated namespace gather**
+
+Troubleshooting a migration often requires looking at resource YAML in migrated namespaces. 
+You can easily gather the content of the namespaces from the most recent migration attempt with this command.
+```
+# Gathers content of namespaces migrated during latest MigMigration
+oc adm must-gather --image=quay.io/djwhatle/must-gather:latest -- /usr/bin/gather_migrated_namespaces
 ```
 
 #### Preview metrics on local Prometheus server
