@@ -16,6 +16,12 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
   done
   echo "Will collect debug info from migclusters [${clusters[@]}]"
 
+  # Find the latest migration, plan, and associated namespaces so we can gather additional info from those
+  latest_migration=$(oc -n ${localns} get migmigration -o json | jq -r '.items|=sort_by(.metadata.creationTimestamp)' | jq -r '.items[-1].metadata.name')
+  latest_migration_plan=$(oc -n ${localns} get migmigration ${latest_migration} -o jsonpath={.spec.migPlanRef.name})
+  latest_migration_namespaces=$(oc -n ${localns} get migplan ${latest_migration_plan} -o json | jq -r '.spec.namespaces[]')
+  latest_migration_clusters=$(oc -n ${localns} get migplan ${latest_migration_plan} -o json | jq -r '.spec.destMigClusterRef.name, .spec.srcMigClusterRef.name')
+
   # Iterate over all connected non-host OpenShift clusters
   for cluster in ${clusters[@]}; do
     unset KUBECONFIG
@@ -40,6 +46,18 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
       echo "[cluster=${cluster}][namespace=${ns}] Detected MTC installation"
       namespaces+=(${ns})
     done
+
+    # Check if this cluster has a migrated namespace we want to oc adm inspect
+    if echo $latest_migration_clusters | grep -o "\b${cluster}\b" > /dev/null; then
+      echo "[cluster=${cluster}] Found within latest_migration_clusters=${latest_migration_clusters}"
+      for ns in ${latest_migration_namespaces}; do
+        echo "[cluster=${cluster}][namespace=${ns}][migration=${latest_migration}][plan=${latest_migration_plan}] Running oc adm inspect on namespace that is part of latest migration and plan"
+        mkdir -p must-gather/clusters/${cluster}/migrated-namespaces
+        /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${cluster}/migrated-namespaces ns/${ns} &
+      done
+    else
+      echo "[cluster=${cluster}] Not found within latest_migration_clusters=${latest_migration_clusters}"
+    fi
 
     # Collect all resources in MTC namespaces with must-gather
     for ns in ${namespaces[@]}; do
@@ -93,6 +111,16 @@ else
   echo "Essential-only must-gather was requested. Removing duplicate pod logs from oc adm inspect to reduce must-gather size"
   find /must-gather/clusters/*/namespaces/*/pods/ -name '*.log' -delete
 fi
+
+# Wipe secrets from migrated-namespaces data
+echo "Scrubbing secrets collected from migrated namespaces"
+find must-gather/clusters/*/migrated-namespaces/namespaces/*/*/ -name *secrets.yaml* -delete
+
+# Shorten logs from migrated-namespaces to last 100 lines
+echo "Shortening logs collected from migrated namespaces to last 100 lines"
+for logfile in $(find must-gather/clusters/*/migrated-namespaces/namespaces/*/*/ -name *.log); do
+  tail -100 "${logfile}" > tmp.log && mv tmp.log "${logfile}"
+done
 
 # Tar all must-gather artifacts for faster transmission 
 echo "Tarring must-gather artifacts..."
