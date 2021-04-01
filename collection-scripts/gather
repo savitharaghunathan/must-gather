@@ -48,16 +48,11 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
     done
 
     # Check if this cluster has a migrated namespace we want to oc adm inspect
-    if echo $latest_migration_clusters | grep -o "\b${cluster}\b" > /dev/null; then
-      echo "[cluster=${cluster}] Found within latest_migration_clusters=${latest_migration_clusters}"
-      for ns in ${latest_migration_namespaces}; do
-        echo "[cluster=${cluster}][namespace=${ns}][migration=${latest_migration}][plan=${latest_migration_plan}] Running oc adm inspect on namespace that is part of latest migration and plan"
-        mkdir -p must-gather/clusters/${cluster}/migrated-namespaces
-        /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${cluster}/migrated-namespaces ns/${ns} &
-      done
-    else
-      echo "[cluster=${cluster}] Not found within latest_migration_clusters=${latest_migration_clusters}"
-    fi
+    for ns in ${latest_migration_namespaces}; do
+      echo "[cluster=${cluster}][namespace=${ns}][migration=${latest_migration}][plan=${latest_migration_plan}] Running oc adm inspect on namespace that is part of latest migration and plan"
+      mkdir -p must-gather/clusters/${cluster}/migrated-namespaces
+      /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${cluster}/migrated-namespaces ns/${ns} &
+    done
 
     # Collect all resources in MTC namespaces with must-gather
     for ns in ${namespaces[@]}; do
