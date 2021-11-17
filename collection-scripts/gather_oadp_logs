@@ -1,0 +1,45 @@
+#!/bin/bash
+source pwait
+max_parallelism=10
+
+# Cluster passed in from main gather
+cluster=$1
+namespaces=$2
+logs_since=$3
+
+base_path="/must-gather/oadp"
+mkdir -p ${base_path}
+
+# Collect all Pod logs from namespaces where MTC is installed
+for ns in ${namespaces[@]}; do
+
+  # Gather Pod associated logs
+  /usr/bin/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
+
+  # Gather logs for each oadp operator instance
+  for vel in $(oc get velero --namespace ${ns} --no-headers | awk '{print $1}'); do
+    # TODO: gather filtered logs from mig-controller with this plan name
+    plan_path="${base_path}/velero-${vel}"
+    mkdir -p ${plan_path}
+    
+      for backup in $(oc get backup --namespace ${ns} -l "velero.io/storage-location"="${vel}" --no-headers | awk '{print $1}'); do
+        # Gather backup
+        backup_path="${plan_path}/backup-${backup}"
+        mkdir -p ${backup_path}
+        /usr/bin/gather_logs_backup ${cluster} ${ns} ${logs_since} ${max_parallelism} ${backup} ${backup_path} &
+        pwait $max_parallelism
+      done
+      
+      for restore in $(oc get restore --namespace ${ns} -l "migration.openshift.io/migmigration-name"="${migmigration}" --no-headers | awk '{print $1}'); do
+        # Gather restore
+        restore_path="${migration_path}/restore-${restore}"
+        mkdir -p ${restore_path}
+        /usr/bin/gather_logs_restore ${cluster} ${ns} ${logs_since} ${max_parallelism} ${restore} ${restore_path} &
+        pwait $max_parallelism
+      done
+    
+  done
+done
+
+# Wait for all background jobs to complete
+wait
