@@ -30,9 +30,9 @@ for ns in ${namespaces[@]}; do
         pwait $max_parallelism
       done
       
-      for restore in $(oc get restore --namespace ${ns} -l "migration.openshift.io/migmigration-name"="${migmigration}" --no-headers | awk '{print $1}'); do
+      for restore in $(oc get restore --namespace ${ns} -l "velero.io/storage-location"="${vel}" --no-headers | awk '{print $1}'); do
         # Gather restore
-        restore_path="${migration_path}/restore-${restore}"
+        restore_path="${plan_path}/restore-${restore}"
         mkdir -p ${restore_path}
         /usr/bin/gather_logs_restore ${cluster} ${ns} ${logs_since} ${max_parallelism} ${restore} ${restore_path} &
         pwait $max_parallelism
