@@ -22,7 +22,7 @@ for ns in ${namespaces[@]}; do
     plan_path="${base_path}/velero-${vel}"
     mkdir -p ${plan_path}
     
-      for backup in $(oc get backup --namespace ${ns} -l "velero.io/storage-location"="${vel}" --no-headers | awk '{print $1}'); do
+      for backup in $(oc get backup --namespace ${ns} --no-headers | awk '{print $1}'); do
         # Gather backup
         backup_path="${plan_path}/backup-${backup}"
         mkdir -p ${backup_path}
@@ -30,7 +30,7 @@ for ns in ${namespaces[@]}; do
         pwait $max_parallelism
       done
       
-      for restore in $(oc get restore --namespace ${ns} -l "velero.io/storage-location"="${vel}" --no-headers | awk '{print $1}'); do
+      for restore in $(oc get restore --namespace ${ns} --no-headers | awk '{print $1}'); do
         # Gather restore
         restore_path="${plan_path}/restore-${restore}"
         mkdir -p ${restore_path}
