@@ -21,16 +21,16 @@ for ns in $(oc get veleroes.oadp.openshift.io --all-namespaces --no-headers | aw
 
   # Collect velero CRs
   echo "Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
-  /usr/bin/gather_oadp_crs ${clusterID} ${namespaces} &
+  /usr/bin/gather_crs ${clusterID} ${namespaces} &
 
   # Collect the logs"
-  echo "[cluster=${cluster}] Gathering logs for namespaces [${namespaces[@]}]"
-  /usr/bin/gather_oadp_logs ${cluster} ${namespaces} ${logs_since} &
+  echo "[cluster=${clusterID}] Gathering logs for namespaces [${namespaces[@]}]"
+  /usr/bin/gather_logs ${clusterID} ${namespaces} ${logs_since} &
 
 
   # Collect metrics from Prometheus
   if [ -z "$essential_only" ]; then
-    echo "[cluster=host] Gathering prometheus metrics"
+    echo "[cluster=${clusterID}] Gathering prometheus metrics"
     /usr/bin/gather_metrics &
   else
     echo "Essential-only must-gather was requested. Skipping prometheus metrics collection"
