@@ -18,8 +18,7 @@ for ns in ${namespaces[@]}; do
 
   # Gather logs for each oadp operator instance
   for vel in $(oc get velero --namespace ${ns} --no-headers | awk '{print $1}'); do
-    # TODO: gather filtered logs from mig-controller with this plan name
-    plan_path="${base_path}/velero-${vel}"
+    plan_path="$/must-gather/clusters/${cluster}/namespaces/${ns}/oadp/dpa-${vel}"
     mkdir -p ${plan_path}
     
       for backup in $(oc get backup --namespace ${ns} --no-headers | awk '{print $1}'); do
@@ -28,6 +27,13 @@ for ns in ${namespaces[@]}; do
         mkdir -p ${backup_path}
         /usr/bin/gather_logs_backup ${cluster} ${ns} ${logs_since} ${max_parallelism} ${backup} ${backup_path} &
         pwait $max_parallelism
+        for pvb in $(oc get podvolumebackup --namespace ${ns} -l "velero.io/backup-name"="${backup}" --no-headers | awk '{print $1}'); do
+          # Gather PVB
+          pvb_path="${backup_path}/podvolumebackup-${pvb}"
+          mkdir -p ${pvb_path}
+          /usr/bin/logs/gather_logs_pvb ${cluster} ${ns} ${logs_since} ${max_parallelism} ${pvb} ${pvb_path} &
+          pwait $max_parallelism
+        done
       done
       
       for restore in $(oc get restore --namespace ${ns} --no-headers | awk '{print $1}'); do
@@ -36,6 +42,13 @@ for ns in ${namespaces[@]}; do
         mkdir -p ${restore_path}
         /usr/bin/gather_logs_restore ${cluster} ${ns} ${logs_since} ${max_parallelism} ${restore} ${restore_path} &
         pwait $max_parallelism
+        for pvr in $(oc get podvolumerestore --namespace ${ns} -l "velero.io/restore-name"="${restore}" --no-headers | awk '{print $1}'); do
+          # Gather PVR
+          pvr_path="${restore_path}/podvolumerestore-${pvr}"
+          mkdir -p ${pvr_path}
+          /usr/bin/gather_logs_pvr ${cluster} ${ns} ${logs_since} ${max_parallelism} ${pvr} ${pvr_path} &
+          pwait $max_parallelism
+        done
       done
     
   done

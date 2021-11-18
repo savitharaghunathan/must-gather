@@ -20,7 +20,7 @@ for ns in $(oc get veleroes.oadp.openshift.io --all-namespaces --no-headers | aw
     done
 
   # Collect velero CRs
-  echo "Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
+  echo "Gathering Velero CRs for namespaces [${namespaces[@]}]"
   /usr/bin/gather_crs ${clusterID} ${namespaces} &
 
   # Collect the logs"

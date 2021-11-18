@@ -2,7 +2,7 @@ IMAGE_REGISTRY ?= quay.io
 IMAGE_TAG ?= latest
 IMAGE_NAME ?= sraghuna/must-gather-oadp
 
-PROMETHEUS_LOCAL_DATA_DIR ?= /tmp/mig-prometheus-data-dump
+PROMETHEUS_LOCAL_DATA_DIR ?= /tmp/oadp-data-dump
 # Search for prom_data.tar.gz archive in must-gather output in currect directory by default
 PROMETHEUS_DUMP_PATH ?= $(shell find ./must-gather.local* -name prom_data.tar.gz -printf "%T@ %p\n" | sort -n | tail -1 | cut -d" " -f2)
 
@@ -19,7 +19,7 @@ docker-push:
 prometheus-run: prometheus-cleanup-container prometheus-load-dump
 	docker run -d \
 	  --mount type=bind,source=${PROMETHEUS_LOCAL_DATA_DIR},target=/prometheus \
-	  --name mig-metrics-prometheus \
+	  --name oadp-prometheus \
 	  --publish 127.0.0.1:9090:9090 \
 	  prom/prometheus:v2.21.0 \
 	&& echo "Started Prometheus on http://localhost:9090"
@@ -31,8 +31,8 @@ prometheus-load-dump: prometheus-check-archive-file prometheus-cleanup-data
 
 prometheus-cleanup-container:
 	# delete data files directly from the container to allow delete data directory from outside of the container
-	docker exec mig-metrics-prometheus rm -rf /prometheus || true
-	docker rm -f mig-metrics-prometheus || true
+	docker exec oadp-prometheus rm -rf /prometheus || true
+	docker rm -f oadp-prometheus || true
 
 prometheus-cleanup-data:
 	rm -rf ${PROMETHEUS_LOCAL_DATA_DIR}
