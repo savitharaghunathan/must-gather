@@ -16,4 +16,4 @@ COPY collection-scripts/* /usr/bin/
 COPY collection-scripts/logs/* /usr/bin/
 COPY collection-scripts/time_window_gather /usr/bin/
 
-ENTRYPOINT /usr/bin/gather_oadp
+ENTRYPOINT /usr/bin/gather

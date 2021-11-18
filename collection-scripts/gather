@@ -4,57 +4,29 @@
 logs_since="${logs_since:-72h}"
 
 unset KUBECONFIG
-for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}'); do
-  clusters=()
-  clusters+=(host)
-  # get all migclusters
-  for c in $(oc -n ${localns} get migclusters -o custom-columns=name:.metadata.name --no-headers); do
-    # only take non-host cluster
-    if [ $(oc -n ${localns} get migcluster ${c} -o go-template='{{ .spec.isHostCluster }}') == "false" ]; then
-      clusters+=(${c})
-    fi
-  done
-  echo "Will collect debug info from migclusters [${clusters[@]}]"
 
-  # Iterate over all connected non-host OpenShift clusters
-  for cluster in ${clusters[@]}; do
-    unset KUBECONFIG
-    if [ ${cluster} != "host" ]; then
-      echo "[cluster=${cluster}] Performing token login"
-      token=$(oc get -n $(oc get -n ${localns} migcluster ${cluster} -o go-template='{{ .spec.serviceAccountSecretRef.namespace }}') secret $(oc get -n ${localns} migcluster ${cluster} -o go-template='{{ .spec.serviceAccountSecretRef.name }}') -o go-template='{{ .data.saToken }}' | base64 -d)
-      url=$(oc get -n ${localns} migcluster ${cluster} -o go-template='{{ .spec.url }}')
-      export KUBECONFIG=/tmp/kubeconfig
-      oc login --insecure-skip-tls-verify=true --token=${token} $url
-      if [ "$?" != "0" ]; then
-        object_collection_path="/must-gather/clusters/${cluster}/"
-        mkdir -p ${object_collection_path}
-        echo "Login to migcluster ${cluster} unsuccessful."  > "${object_collection_path}/login_error.txt"
-        continue
-      fi
-    fi
+clusterID=$(oc get clusterversion -o jsonpath='{.items[].spec.clusterID}' | cut -c -8)
+namespaces=()
+#to verify: one oadp CR per cluster or multiple CRs per clsuter(since it is namespace scoped)
+for ns in $(oc get veleroes.oadp.openshift.io --all-namespaces --no-headers | awk '{print $1}')
+  do
+    echo "[namespace=${ns}] Detected OADP operator installation"
+    namespaces+=(${ns})
 
-    # Build list of namespaces where MTC is installed
-    namespaces=()
-    for ns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --all-namespaces --no-headers | awk '{print $1}')
-    do
-      echo "[cluster=${cluster}][namespace=${ns}] Detected MTC installation"
-      namespaces+=(${ns})
-    done
-
-    # Collect all resources in MTC namespaces with must-gather
+  # Collect all resources in OADP operator namespaces with must-gather
     for ns in ${namespaces[@]}; do
-      echo "[cluster=${cluster}][namespace=${ns}] Running oc adm inspect"
-      /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${cluster} --all-namespaces ns/${ns} &
+      echo "[namespace=${ns}] Running oc adm inspect"
+      /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${clusterID} --all-namespaces ns/${ns} &
     done
 
-    # Collect the migration and velero CRs
-    echo "[cluster=${cluster}] Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
-    /usr/bin/gather_crs ${cluster} ${namespaces} &
+  # Collect velero CRs
+  echo "Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
+  /usr/bin/gather_oadp_crs ${clusterID} ${namespaces} &
 
-    # Collect the logs"
-    echo "[cluster=${cluster}] Gathering logs for namespaces [${namespaces[@]}]"
-    /usr/bin/gather_logs ${cluster} ${namespaces} ${logs_since} &
-  done
+  # Collect the logs"
+  echo "[cluster=${cluster}] Gathering logs for namespaces [${namespaces[@]}]"
+  /usr/bin/gather_oadp_logs ${cluster} ${namespaces} ${logs_since} &
+
 
   # Collect metrics from Prometheus
   if [ -z "$essential_only" ]; then
@@ -66,7 +38,7 @@ for localns in $(/usr/bin/oc get migrationcontrollers.migration.openshift.io --a
 
   # Collect memory profile data
   if [ -z "$essential_only" ]; then
-    /usr/bin/gather_pprof ${localns} &
+    /usr/bin/gather_pprof ${ns} &
   else
     echo "Essential-only must-gather was requested. Skipping pprof memory profile gather"
   fi

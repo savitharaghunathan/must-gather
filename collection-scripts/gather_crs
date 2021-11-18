@@ -3,14 +3,14 @@ source pwait
 max_parallelism=10
 
 # Cluster passed in from main gather
-cluster=$1
+clusterID=$1
 namespaces=$2
 
 # Resource list
 resources=()
 
-# Migration
-for i in $(/usr/bin/oc get crd | grep migration.openshift.io | awk '{print $1}'); do
+# OADP
+for i in $(/usr/bin/oc get crd | grep oadp.openshift.io | awk '{print $1}'); do
   resources+=($i)
 done
 
@@ -19,25 +19,26 @@ for i in $(/usr/bin/oc get crd | grep velero.io | awk '{print $1}'); do
   resources+=($i)
 done
 
-echo "[cluster=${cluster}] Starting collection of: [${resources[@]}]"
+echo "Starting collection of: [${resources[@]}]"
 
 # we use nested loops to nicely output objects partitioned per namespace, kind
 for resource in ${resources[@]}; do
-  echo "[cluster=${cluster}] Collecting ${resource}"
+  echo "Collecting ${resource}"
   /usr/bin/oc get ${resource} --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace --no-headers 2> /dev/null | \
   while read ocresource; do
     ocobject=$(echo $ocresource | awk '{print $1}')
     ocproject=$(echo $ocresource | awk '{print $2}')
     if [ -z "${ocproject}" ]|[ "${ocproject}" == "<none>" ]; then
-      object_collection_path=must-gather/clusters/${cluster}/cluster-scoped-resources/${resource}
+      object_collection_path=must-gather/clusters/${clusterID}/cluster-scoped-resources/${resource}
       mkdir -p ${object_collection_path}
       /usr/bin/oc get ${resource} -o yaml ${ocobject} &> ${object_collection_path}/${ocobject}.yaml &
     else
-      skip=("migmigrations.migration.openshift.io" "migplans.migration.openshift.io" "directimagemigrations.migration.openshift.io" "directimagestreammigrations.migration.openshift.io" "directvolumemigrations.migration.openshift.io" "directvolumemigrationprogresses.migration.openshift.io")
+      #TODO: verify if there are more crds to add for oadp
+      skip=("veleroes.oadp.openshift.io")
       if [[ ${skip[*]} =~ "${resource}" ]]; then
         continue
       fi
-      object_collection_path=must-gather/clusters/${cluster}/namespaces/${ocproject}/crs/${resource}
+      object_collection_path=must-gather/clusters/${clusterID}/namespaces/${ocproject}/crs/${resource}
       mkdir -p ${object_collection_path}
       /usr/bin/oc get ${resource} -n ${ocproject} -o yaml ${ocobject} &> ${object_collection_path}/${ocobject}.yaml & 
     fi
@@ -46,44 +47,9 @@ for resource in ${resources[@]}; do
 done
 
 for ns in ${namespaces[@]}; do
-  for migplan in $(oc get migplan --namespace ${ns} --no-headers | awk '{print $1}'); do
-    mkdir -p "/must-gather/migplans/migplan-${migplan}"
-    oc get migplan ${migplan} -o yaml --namespace ${ns} &> "/must-gather/migplans/migplan-${migplan}/${migplan}.yml" &
-    pwait $max_parallelism
-  done
-
-  for migmigration in $(oc get migmigration --namespace ${ns} --no-headers | awk '{print $1}'); do
-    migplan=$(oc get migmigration ${migmigration} --namespace ${ns} -o jsonpath='{.spec.migPlanRef.name}')
-    mkdir -p "/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}"
-    oc get migmigration ${migmigration} -o yaml --namespace ${ns} &> "/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/migmigration-${migmigration}.yml" &
-    pwait $max_parallelism
-  done
-
-  for dvm in $(oc get dvm --namespace ${ns} --no-headers | awk '{print $1}'); do
-    migmigration=$(oc get dvm ${dvm} --namespace ${ns} -o jsonpath='{.metadata.ownerReferences[0].name}')
-    migplan=$(oc get migmigration ${migmigration} --namespace ${ns} -o jsonpath='{.spec.migPlanRef.name}')
-    object_collection_path="/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/dvm-${dvm}"
-    mkdir -p ${object_collection_path}
-    oc get dvm ${dvm} -o yaml --namespace ${ns} &> ${object_collection_path}/dvm-${dvm}.yml &
-    uid=$(oc get dvm ${dvm} --namespace ${ns} -o jsonpath='{.metadata.uid}')
-    for dvmp in $(oc get dvmp --namespace ${ns} --selector directvolumemigration=${uid} --no-headers | awk '{print $1}'); do
-      oc get dvmp ${dvmp} -o yaml --namespace ${ns} &> ${object_collection_path}/dvmp-${dvmp}.yml &
-      pwait $max_parallelism
-    done
-    pwait $max_parallelism
-  done
-
-  for dim in $(oc get dim --namespace ${ns} --no-headers | awk '{print $1}'); do
-    migmigration=$(oc get dim ${dim} --namespace ${ns} -o jsonpath='{.metadata.ownerReferences[0].name}')
-    migplan=$(oc get migmigration ${migmigration} --namespace ${ns} -o jsonpath='{.spec.migPlanRef.name}')
-    object_collection_path="/must-gather/migplans/migplan-${migplan}/migmigration-${migmigration}/dim-${dim}"
-    mkdir -p ${object_collection_path}
-    oc get dim ${dim} -o yaml --namespace ${ns} &> ${object_collection_path}/dim-${dim}.yml &
-    uid=$(oc get dim ${dim} --namespace ${ns} -o jsonpath='{.metadata.uid}')
-    for dism in $(oc get dism --namespace ${ns} --selector directimagemigration=${uid} --no-headers | awk '{print $1}'); do
-      oc get dism ${dism} -o yaml --namespace ${ns} &> ${object_collection_path}/dism-${dism}.yml &
-      pwait $max_parallelism
-    done
+  for vel in $(oc get velero --namespace ${ns} --no-headers | awk '{print $1}'); do
+    mkdir -p "/must-gather/oadp/velero-${vel}"
+    oc get velero ${vel} -o yaml --namespace ${ns} &> "/must-gather/oadp/velero-${vel}/${vel}.yml" &
     pwait $max_parallelism
   done
 done
