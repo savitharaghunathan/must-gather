@@ -2,7 +2,7 @@
 #
 # NOTICE: THIS FILE IS NOT INCLUDED IN THE DEFAULT GATHER SCRIPT
 #
-# Can be executed by: oc adm must-gather --image quay.io/konveyor/must-gather:latest -- /usr/bin/gather_metrics_dump
+# Can be executed by: oc adm must-gather --image quay.io/oadp/must-gather:latest -- /usr/bin/gather_metrics_dump
 #
 
 # Prepare gather setup

@@ -4,7 +4,8 @@ max_parallelism=10
 
 # Cluster passed in from main gather
 clusterID=$1
-namespaces=$2
+shift
+namespaces=("$@")
 
 # Resource list
 resources=()

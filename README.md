@@ -7,14 +7,14 @@ that expands its capabilities to gather MTC specific resources
 
 **Full gather**
 ```sh
-oc adm must-gather --image=quay.io/konveyor/must-gather:latest
+oc adm must-gather --image=quay.io/oadp/must-gather:latest
 ```
 
 The command above will create a local directory with a dump of the MTC state.
 
 You will get a dump of:
-- All namespaces where a MTC toolset is installed, including pod logs
-- All velero.io and migration.openshift.io resources located in those namespaces
+- All namespaces where OADP operator is installed, including pod logs
+- All velero.io resources located in those namespaces
 - Prometheus metrics
 
 **Essential-only gather**
@@ -24,14 +24,14 @@ Differences from full gather:
  - Skips collection of prometheus metrics, pprof. Removes duplicate logs from payload.
 ```
 # Essential gather (available time windows: [1h, 6h, 24h, 72h, all])
-oc adm must-gather --image=quay.io/konveyor/must-gather:latest -- /usr/bin/gather_24h_essential
+oc adm must-gather --image=quay.io/oadp/must-gather:latest -- /usr/bin/gather_24h_essential
 ```
 
 #### Preview metrics on local Prometheus server
 
 Get Prometheus metrics data directory dump (last day, might take a while):
 ```sh
-oc adm must-gather --image quay.io/konveyor/must-gather:latest -- /usr/bin/gather_metrics_dump
+oc adm must-gather --image quay.io/oadp/must-gather:latest -- /usr/bin/gather_metrics_dump
 ```
 
 Run local Prometheus instance with dumped data:
@@ -40,7 +40,7 @@ make prometheus-run # and prometheus-cleanup when you're done
 ```
 The latest Prometheus data file (prom_data.tar.gz) in current directory/subdirectories is searched by default. Could be specified in ```PROMETHEUS_DUMP_PATH``` environment variable.
 
-#### Analyze mig-controller memory profile
+#### Analyze oadp memory profile
 
 In the must-gather archive, find the `memory-profiles` directory:
 
@@ -48,7 +48,7 @@ In the must-gather archive, find the `memory-profiles` directory:
 cd memory-profiles/openshift-migration
 ```
 
-Here, you will find memory profile of mig-controller in two formats - a binary and a png file. The binary file `pprof_raw_payload` contains the full heap represention of mig-controller, while the PNG file is a simple graphical representation of memory allocation. 
+Here, you will find memory profile of oadp operator in two formats - a binary and a png file. The binary file `pprof_raw_payload` contains the full heap represention of oadp operator, while the PNG file is a simple graphical representation of memory allocation. 
 
 To analyze the raw binary heap data on your machine, use `go tool pprof`:
 

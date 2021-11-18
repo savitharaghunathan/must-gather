@@ -12,41 +12,40 @@ for ns in $(oc get veleroes.oadp.openshift.io --all-namespaces --no-headers | aw
   do
     echo "[namespace=${ns}] Detected OADP operator installation"
     namespaces+=(${ns})
-
+  done
   # Collect all resources in OADP operator namespaces with must-gather
-    for ns in ${namespaces[@]}; do
-      echo "[namespace=${ns}] Running oc adm inspect"
-      /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${clusterID} --all-namespaces ns/${ns} &
-    done
+for ns in ${namespaces[@]}; do
+    echo "[namespace=${ns}] Running oc adm inspect"
+    /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${clusterID} --all-namespaces ns/${ns} &
+  done
 
   # Collect velero CRs
-  echo "Gathering Velero CRs for namespaces [${namespaces[@]}]"
-  /usr/bin/gather_crs ${clusterID} ${namespaces} &
+echo "Gathering Velero CRs for namespaces [${namespaces[@]}]"
+/usr/bin/gather_crs ${clusterID} ${namespaces[@]} &
 
   # Collect the logs"
-  echo "[cluster=${clusterID}] Gathering logs for namespaces [${namespaces[@]}]"
-  /usr/bin/gather_logs ${clusterID} ${namespaces} ${logs_since} &
+echo "[cluster=${clusterID}] Gathering logs for namespaces [${namespaces[@]}]"
+/usr/bin/gather_logs ${clusterID} ${logs_since} ${namespaces[@]} &
 
 
   # Collect metrics from Prometheus
-  if [ -z "$essential_only" ]; then
-    echo "[cluster=${clusterID}] Gathering prometheus metrics"
-    /usr/bin/gather_metrics &
-  else
-    echo "Essential-only must-gather was requested. Skipping prometheus metrics collection"
-  fi
+if [ -z "$essential_only" ]; then
+  echo "[cluster=${clusterID}] Gathering prometheus metrics"
+  /usr/bin/gather_metrics &
+else
+  echo "Essential-only must-gather was requested. Skipping prometheus metrics collection"
+fi
 
   # Collect memory profile data
-  if [ -z "$essential_only" ]; then
-    /usr/bin/gather_pprof ${ns} &
-  else
-    echo "Essential-only must-gather was requested. Skipping pprof memory profile gather"
-  fi
+if [ -z "$essential_only" ]; then
+  /usr/bin/gather_pprof ${ns} &
+else
+  echo "Essential-only must-gather was requested. Skipping pprof memory profile gather"
+fi
 
   # Waits for gather_crs, gather_logs, gather_metrics running in background
-  echo "Waiting for background gather tasks to finish"
-  wait
-done
+echo "Waiting for background gather tasks to finish"
+wait
 
 # If running essential-only must-gather, delete duplicated logs collected by oc adm inspect
 if [ -z "$essential_only" ]; then

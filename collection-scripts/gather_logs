@@ -4,21 +4,20 @@ max_parallelism=10
 
 # Cluster passed in from main gather
 cluster=$1
-namespaces=$2
-logs_since=$3
+logs_since=$2
+shift
+shift
+namespaces=("$@")
 
-base_path="/must-gather/oadp"
-mkdir -p ${base_path}
 
-# Collect all Pod logs from namespaces where MTC is installed
+# Collect all Pod logs from namespaces where OADP operator is installed
 for ns in ${namespaces[@]}; do
-
   # Gather Pod associated logs
   /usr/bin/gather_logs_pods ${cluster} ${ns} ${logs_since} ${max_parallelism} &
 
   # Gather logs for each oadp operator instance
   for vel in $(oc get velero --namespace ${ns} --no-headers | awk '{print $1}'); do
-    plan_path="$/must-gather/clusters/${cluster}/namespaces/${ns}/oadp/dpa-${vel}"
+    plan_path="/must-gather/clusters/${cluster}/namespaces/${ns}/oadp/dpa-${vel}"
     mkdir -p ${plan_path}
     
       for backup in $(oc get backup --namespace ${ns} --no-headers | awk '{print $1}'); do

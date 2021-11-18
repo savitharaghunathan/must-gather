@@ -1,6 +1,6 @@
 IMAGE_REGISTRY ?= quay.io
 IMAGE_TAG ?= latest
-IMAGE_NAME ?= sraghuna/must-gather-oadp
+IMAGE_NAME ?= oadp/must-gather
 
 PROMETHEUS_LOCAL_DATA_DIR ?= /tmp/oadp-data-dump
 # Search for prom_data.tar.gz archive in must-gather output in currect directory by default
