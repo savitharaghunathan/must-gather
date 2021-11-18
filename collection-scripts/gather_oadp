@@ -14,13 +14,13 @@ for ns in $(oc get veleroes.oadp.openshift.io --all-namespaces --no-headers | aw
     namespaces+=(${ns})
   done
 
-  # Collect all resources in MTC namespaces with must-gather
+  # Collect all resources in OADP operator namespaces with must-gather
   for ns in ${namespaces[@]}; do
     echo "[namespace=${ns}] Running oc adm inspect"
     /usr/bin/oc adm inspect --dest-dir must-gather/clusters/${clusterID} --all-namespaces ns/${ns} &
   done
 
-  # Collect the migration and velero CRs
+  # Collect velero CRs
   echo "Gathering MTC and Velero CRs for namespaces [${namespaces[@]}]"
   /usr/bin/gather_oadp_crs ${clusterID} ${namespaces} &
 
