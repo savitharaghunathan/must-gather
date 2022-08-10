@@ -1,3 +1,5 @@
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6349/badge)](https://bestpractices.coreinfrastructure.org/projects/6349)
+
 # MTC must-gather
 
 `must-gather` is a tool built on top of [OpenShift must-gather](https://github.com/openshift/must-gather)
